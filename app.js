@@ -46,7 +46,19 @@ app.post("/api/login", async (req, res) => {
     return res.json({ status: "Incorrect password", code: 1 });
   } else {
     const token = jwt.sign(
-      { uid: user._id, email: user.email, regno: user.regno, name: user.name },
+      {
+        uid: user._id,
+        email: user.email,
+        regno: user.regno,
+        name: user.name,
+        basket: {
+          b1: user.basket1,
+          b2: user.basket2,
+          b3: user.basket3,
+          b4: user.basket4,
+          b5: user.basket5,
+        },
+      },
       process.env.SECRET_KEY
     );
     res.send({ success: 1, token });
@@ -98,6 +110,11 @@ app.post("/api/register", async (req, res) => {
       password,
       name,
       regno,
+      basket1: 18,
+      basket2: 18,
+      basket3: 27,
+      basket4: 45,
+      basket5: 52,
     });
   } catch (err) {
     if (err.code === 11000) {
@@ -202,6 +219,45 @@ app.get("/api/getsubjectlist/:regno", async (req, res) => {
   }
   return res.json({ status: "success", code: 0, subjectlist, user });
 });
+
+//update basket credit api
+app
+  .route("/api/updatebasketcredit")
+  .get(authenticateJWT, async (req, res) => {
+    // return user
+    const user = await User.findOne({ uid: req.decoded.uid }).select(
+      "-password"
+    );
+    if (!user) {
+      return res.json({ status: "User not found", code: 1 });
+    }
+    return res.json({ status: "success", code: 0, user });
+  })
+  .post(authenticateJWT, async (req, res) => {
+    const { basket1, basket2, basket3, basket4, basket5 } = req.body;
+    //validate the user input
+    if (!basket1 || !basket2 || !basket3 || !basket4 || !basket5) {
+      return res.json({ status: "Please fill all the fields" });
+    }
+    //update the basket credit
+    try {
+      const response = await User.updateOne(
+        { regno: req.decoded.regno },
+        {
+          $set: {
+            basket1,
+            basket2,
+            basket3,
+            basket4,
+            basket5,
+          },
+        }
+      );
+    } catch (err) {
+      return res.json({ status: err });
+    }
+    return res.json({ status: "success", code: 0 });
+  });
 
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server started on port 3000");

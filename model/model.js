@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   name: { type: String, required: true },
   regno: { type: Number, required: true, unique: true },
+  basket1: { type: Number, required: true },
+  basket2: { type: Number, required: true },
+  basket3: { type: Number, required: true },
+  basket4: { type: Number, required: true },
+  basket5: { type: Number, required: true },
 });
 
 //create model for mongoDB
