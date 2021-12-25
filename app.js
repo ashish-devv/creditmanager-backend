@@ -14,7 +14,7 @@ const { User, ListSubject } = require("./model/model");
 
 //connect to mongoDB and print the connection status
 mongoose.connect(
-  "mongodb://localhost:27017/creditmanagerapp",
+  process.env.DB_URL,
   {
     useNewUrlParser: true,
     useUnifiedTopology: true,
