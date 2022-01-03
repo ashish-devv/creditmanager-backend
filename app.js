@@ -130,9 +130,9 @@ app.post("/api/register", async (req, res) => {
   return res.json({ status: "success", code: 0 });
 });
 
-app.get("/hello", authenticateJWT, (req, res) => {
+app.get("/hello", (req, res) => {
   //console.log(req.decoded);
-  return res.send("Hello");
+  return res.json({ status: "success" });
 });
 
 //create a api to create a entry in subject list
