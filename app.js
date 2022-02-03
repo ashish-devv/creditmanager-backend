@@ -80,6 +80,11 @@ app.post("/api/register", async (req, res) => {
   if (!emailRegex.test(email)) {
     return res.json({ status: "Please enter a valid email" });
   }
+  //validate email is from  the same domain
+  const domain = email.split("@")[1];
+  if (domain !== "cutm.ac.in") {
+    return res.json({ status: "Please enter a valid Cutm email" });
+  }
   //validate the password
   const passwordRegex =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
