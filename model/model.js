@@ -7,6 +7,7 @@ const listsubject = new mongoose.Schema({
   subjectcredit: { type: Number, required: true },
   basketno: { type: Number, required: true },
   semester: { type: Number, required: true },
+  year: { type: Number, required: true },
 });
 
 // create a schema for mongoDB for user
@@ -15,6 +16,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   name: { type: String, required: true },
   regno: { type: Number, required: true, unique: true },
+  year: { type: Number, required: true },
+  admin: { type: Boolean, required: true },
   basket1: { type: Number, required: true },
   basket2: { type: Number, required: true },
   basket3: { type: Number, required: true },

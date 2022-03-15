@@ -28,6 +28,8 @@ mongoose.connect(
   }
 );
 
+// mongoose.set("debug", true);
+
 //create a api to login a user
 app.post("/api/login", async (req, res) => {
   //get the email and password from the request body
@@ -42,6 +44,7 @@ app.post("/api/login", async (req, res) => {
   //compare the password with the hashed password
   const isMatch = await bcrypt.compare(password, user.password);
   //if password is not matched
+  const adminstatus = user.admin;
   if (!isMatch) {
     return res.json({ status: "Incorrect password", code: 1 });
   } else {
@@ -51,6 +54,7 @@ app.post("/api/login", async (req, res) => {
         email: user.email,
         regno: user.regno,
         name: user.name,
+        admin: user.admin,
         basket: {
           b1: user.basket1,
           b2: user.basket2,
@@ -61,7 +65,7 @@ app.post("/api/login", async (req, res) => {
       },
       process.env.SECRET_KEY
     );
-    res.send({ success: 1, token });
+    res.send({ success: 1, token, adminstatus });
   }
   //if password is matched
   //create a token
@@ -69,9 +73,9 @@ app.post("/api/login", async (req, res) => {
 
 //create a Api to register a user
 app.post("/api/register", async (req, res) => {
-  const { email, password: plainpwd, name, regno } = req.body;
+  const { email, password: plainpwd, name, regno, year, admincode } = req.body;
   // validate the user input
-  if (!email || !plainpwd || !name || !regno) {
+  if (!email || !plainpwd || !name || !regno || !year) {
     return res.json({ status: "Please fill all the fields" });
   }
   //validate the email
@@ -91,6 +95,11 @@ app.post("/api/register", async (req, res) => {
   if (!passwordRegex.test(plainpwd)) {
     return res.json({ status: "Please enter a valid password" });
   }
+  //check year is valid like 2000
+  const yearRegex = /^[0-9]{4}$/;
+  if (!yearRegex.test(year)) {
+    return res.json({ status: "Please enter a valid year" });
+  }
   // check if the user already exists
   const user = await User.findOne({ email });
   if (user) {
@@ -107,6 +116,19 @@ app.post("/api/register", async (req, res) => {
       message: "User Already Exists",
     });
   }
+  //check admin code
+  var admin = null;
+  if (admincode === undefined || admincode === null || admincode === "") {
+    admin = false;
+  } else if (admincode === process.env.ADMIN_CODE) {
+    admin = true;
+  } else {
+    admin = false;
+    return res.json({
+      status: "Admin code is incorrect",
+      message: "Admin Code is incorrect",
+    });
+  }
   // hash the password
   const password = await bcrypt.hash(plainpwd, 10);
   try {
@@ -115,6 +137,8 @@ app.post("/api/register", async (req, res) => {
       password,
       name,
       regno,
+      year,
+      admin,
       basket1: 18,
       basket2: 18,
       basket3: 27,
@@ -142,7 +166,7 @@ app.get("/hello", (req, res) => {
 
 //create a api to create a entry in subject list
 app.post("/api/addsubject", authenticateJWT, async (req, res) => {
-  const { subjectname, subjectcode, subjectcredit, basketno, semester } =
+  const { subjectname, subjectcode, subjectcredit, basketno, semester, year } =
     req.body;
   console.log(req.body);
   //validate the user input and subject code and subject name should be string and subject credit should be number
@@ -153,7 +177,8 @@ app.post("/api/addsubject", authenticateJWT, async (req, res) => {
     !subjectcode ||
     !subjectcredit ||
     !basketno ||
-    !semester
+    !semester ||
+    !year
   ) {
     return res.json({ status: "Please fill all the fields" });
   }
@@ -166,6 +191,7 @@ app.post("/api/addsubject", authenticateJWT, async (req, res) => {
     subjectcredit,
     basketno,
     semester,
+    year,
   });
   try {
     const response = await subject.save();
@@ -264,6 +290,94 @@ app
     return res.json({ status: "success", code: 0 });
   });
 
+app.post("/getdetails", authenticateJWT, async (req, res) => {
+  if (req.decoded.admin === true) {
+    try {
+      var { subjectcode, year } = req.body;
+      //validate the user input
+      if (
+        !subjectcode ||
+        !year ||
+        typeof subjectcode !== "string" ||
+        typeof year !== "string"
+      ) {
+        return res.json({ status: "Please fill all the fields", code: 0 });
+      }
+      if (year.length != 4) {
+        return res.json({ status: "Please enter a valid year", code: 0 });
+      }
+      //query the database using subject code or year
+
+      // console.log("log:", subjectlist);
+
+      // query the database using exact year and subject code
+
+      var subjectlist = await ListSubject.find(
+        {
+          subjectcode,
+          year,
+        },
+        { uid: 1, _id: 0 }
+      );
+      console.log("year", typeof year);
+
+      // console.log(
+      //   "log",
+      //   subjectlist.map((item) => item.uid)
+      // );
+      if (subjectlist.length == 0) {
+        return res.json({ status: "No Data Found", code: 0 });
+      }
+      // get user name and regno by matching all the uid in subject list
+      const userlist = await User.find(
+        {
+          _id: { $in: subjectlist.map((item) => item.uid) },
+        },
+        { name: 1, regno: 1 }
+      );
+      // const userlist = await User.find(
+      //   { id: { $in: subjectlist } },
+      //   { regno: 1, name: 1 }
+      // );
+
+      res.json({ userlist });
+    } catch (error) {
+      console.log(error);
+      return res.json({ status: "Something went Wrong!", code: 0 });
+    }
+  } else {
+    return res.json({ status: "You are not an admin", code: 1 });
+  }
+});
+
+app.post("/getdetailyearwise", authenticateJWT, async (req, res) => {
+  if (req.decoded.admin === true) {
+    try {
+      var { year } = req.body;
+      //validate the user input
+      if (!year || typeof year !== "string") {
+        return res.json({ status: "Please fill all the fields", code: 0 });
+      }
+      if (year.length != 4) {
+        return res.json({ status: "Please enter a valid year", code: 0 });
+      }
+      const userlist = await User.find({ year }, { name: 1, regno: 1 });
+      if (userlist.length == 0) {
+        return res.json({ status: "No Data Found", code: 0 });
+      }
+      const allsubjecttakenbyuser = await ListSubject.find({
+        uid: { $in: userlist.map((item) => item._id) },
+      });
+      return res.json({ userlist, allsubjecttakenbyuser });
+    } catch (error) {
+      console.log(error);
+      return res.json({ status: "Something went Wrong!", code: 0 });
+    }
+  } else {
+    return res.json({ status: "You are not an admin", code: 1 });
+  }
+});
+
 app.listen(process.env.PORT || 5000, () => {
-  console.log("Server started on port 3000");
+  console.log("Server started on port 5000");
 });
